@@ -2,12 +2,24 @@ import { useState, useEffect } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { Link } from "react-router-dom";
+import api from "../services/api";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [backendStatus, setBackendStatus] = useState("checking");
 
   useEffect(() => {
     AOS.init({ duration: 800 });
+    // test api get
+    api.get("/health")
+      .then((res) => {
+        console.log("Backend connected:", res.data);
+        setBackendStatus("online");
+      })
+      .catch((err) => {
+        console.error("Backend failed:", err);
+        setBackendStatus("offline");
+      });
   }, []);
 
   return (
