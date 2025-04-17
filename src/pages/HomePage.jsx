@@ -3,13 +3,18 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { Link } from "react-router-dom";
 import api from "../services/api";
+import productService from "../services/product.service";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [backendStatus, setBackendStatus] = useState("checking");
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     AOS.init({ duration: 800 });
+
     // test api get
     api.get("/health")
       .then((res) => {
@@ -20,7 +25,44 @@ export default function HomePage() {
         console.error("Backend failed:", err);
         setBackendStatus("offline");
       });
+    
+    // Fetch products when component mounts
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const data = await productService.getAllProducts();
+        setProducts(data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setError("Failed to load products. Please try again later.");
+        setLoading(false);
+      }
+    };
+    
+    fetchProducts();
   }, []);
+
+  // Render star rating based on rating value
+  const renderStarRating = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<span key={`full-${i}`} className="text-yellow-400">★</span>);
+    }
+    
+    if (hasHalfStar) {
+      stars.push(<span key="half" className="text-yellow-400">★</span>);
+    }
+    
+    for (let i = stars.length; i < 5; i++) {
+      stars.push(<span key={`empty-${i}`} className="text-gray-300">★</span>);
+    }
+    
+    return stars;
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -105,45 +147,65 @@ export default function HomePage() {
               </svg>
             </a>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3].map((id) => (
-              <div
-                key={id}
-                className="bg-white rounded-xl shadow-md hover:shadow-2xl hover:-translate-y-1 transition-transform duration-300 overflow-hidden group"
-              >
-                <div className="relative">
-                  <img
-                    src={`https://via.placeholder.com/400x300?text=Gluten+Free+${id}`}
-                    alt="Product"
-                    className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute top-3 right-3 bg-green-500 text-white rounded-full px-3 py-1 text-xs font-bold">
-                    Certified GF
-                  </div>
-                </div>
-                <div className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-2">Premium Gluten-Free {id}</h3>
-                      <p className="text-sm text-gray-500 mb-3">Natural Organics</p>
+          
+          {loading ? (
+            <div className="text-center py-10">
+              <p className="text-gray-500">Loading products...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-10">
+              <p className="text-red-500">{error}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {products.length > 0 ? (
+                products.slice(0, 3).map((product) => (
+                  <div
+                    key={product.productID}
+                    className="bg-white rounded-xl shadow-md hover:shadow-2xl hover:-translate-y-1 transition-transform duration-300 overflow-hidden group"
+                  >
+                    <div className="relative">
+                      <img
+                        src={`https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}
+                        alt={product.name}
+                        className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute top-3 right-3 bg-green-500 text-white rounded-full px-3 py-1 text-xs font-bold">
+                        Certified GF
+                      </div>
                     </div>
-                    <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-lg">
-                      <span className="text-yellow-500 font-bold mr-1">4.{id + 5}</span>
-                      <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292..." />
-                      </svg>
+                    <div className="p-6">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-800 mb-2">{product.name}</h3>
+                          <p className="text-sm text-gray-500 mb-3">{product.brand}</p>
+                        </div>
+                        <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-lg">
+                          <span className="text-yellow-500 font-bold mr-1">{product.avgRating || "N/A"}</span>
+                          <div className="flex">
+                            {renderStarRating(product.avgRating || 0)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center mt-5">
+                        <span className="text-blue-600 font-bold text-lg">{product.category}</span>
+                        <Link 
+                          to={`/product/${product.productID}`}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                        >
+                          View Details
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center mt-5">
-                    <span className="text-blue-600 font-bold text-lg">$12.9{id}</span>
-                    <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                      View Details
-                    </button>
-                  </div>
+                ))
+              ) : (
+                <div className="col-span-3 text-center py-10">
+                  <p className="text-gray-500">No products found. Check back later!</p>
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Categories */}
@@ -291,7 +353,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="mt-12 pt-8 border-t border-gray-700 text-center text-gray-400">
-            <p>© 2024 BiteRate. All rights reserved.</p>
+            <p>© 2025 BiteRate. All rights reserved.</p>
           </div>
         </div>
       </footer>
