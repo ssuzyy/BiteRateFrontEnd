@@ -20,6 +20,38 @@ const productService = {
       throw error;
     }
   },
+
+  async getProductsByCategory(category) {
+    try {
+      const response = await api.get(`/products/category/${category}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching products in category "${category}":`, error);
+      throw error;
+    }
+  },
+
+  async getProductReviews(productId) {
+    try {
+      const response = await api.get(`/products/${productId}/reviews`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching reviews for product ID ${productId}:`, error);
+      throw error;
+    }
+  },
+
+  async searchProducts(query) {
+    try {
+      const response = await api.get(`/products/search`, {
+        params: { query }
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error searching products with query "${query}":`, error);
+      throw error;
+    }
+  },
   
   async createProduct(productData) {
     try {
