@@ -1,116 +1,225 @@
 import { useState, useEffect } from "react";
-import { useSearchParams, Link } from "react-router-dom";
-import api from "../services/api";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import productService from "../services/product.service";
 
 export default function SearchResults() {
   const [searchParams] = useSearchParams();
-  const query = searchParams.get("q");
-  const category = searchParams.get("category");
-  
+  const query = searchParams.get("query") || "";
+  const category = searchParams.get("category") || "";
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchInputValue, setSearchInputValue] = useState(query);
+  const navigate = useNavigate();
 
+  // Fetch products based on search parameters
   useEffect(() => {
     const fetchProducts = async () => {
-      setLoading(true);
       try {
-        let endpoint = '/products/search';
-        let params = {};
+        setLoading(true);
+        let data;
         
         if (query) {
-          params.q = query;
+          // Search by query
+          data = await productService.searchProducts(query);
+        } else if (category) {
+          // Filter by category
+          data = await productService.getProductsByCategory(category);
+        } else {
+          // Get all products
+          data = await productService.getAllProducts();
         }
         
-        if (category) {
-          endpoint = `/products/category/${category}`;
-        }
-        
-        const response = await api.get(endpoint, { params });
-        setProducts(response.data);
-        setError(null);
+        setProducts(data);
+        setLoading(false);
       } catch (err) {
         console.error("Error fetching products:", err);
         setError("Failed to load products. Please try again later.");
-      } finally {
         setLoading(false);
       }
     };
-
+    
     fetchProducts();
   }, [query, category]);
 
-  return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6 text-blue-700">
-        {category 
-          ? `${category} Products` 
-          : `Search Results: ${query}`}
-      </h1>
+  // Handle search form submission
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchInputValue.trim()) {
+      navigate(`/search?query=${encodeURIComponent(searchInputValue.trim())}`);
+    }
+  };
 
-      {loading ? (
-        <div className="text-center py-8">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent"></div>
-          <p className="mt-2">Loading products...</p>
-        </div>
-      ) : error ? (
-        <div className="bg-red-100 text-red-700 p-4 rounded-md">{error}</div>
-      ) : products.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-gray-600 text-lg">
-            No products found for "{query || category}".
-          </p>
-          <Link to="/" className="mt-4 inline-block text-blue-500 hover:underline">
-            Return to homepage
-          </Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {products.map((product) => (
-            <div
-              key={product.productID}
-              className="bg-white rounded-xl shadow-md hover:shadow-2xl hover:-translate-y-1 transition-transform duration-300 overflow-hidden"
-            >
-              <div className="relative">
-                <img
-                  src={product.imageUrl || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}
-                  alt={product.name}
-                  className="w-full h-52 object-cover"
+  // Render star rating based on rating value
+  const renderStarRating = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<span key={`full-${i}`} className="text-yellow-400">★</span>);
+    }
+    
+    if (hasHalfStar) {
+      stars.push(<span key="half" className="text-yellow-400">★</span>);
+    }
+    
+    for (let i = stars.length; i < 5; i++) {
+      stars.push(<span key={`empty-${i}`} className="text-gray-300">★</span>);
+    }
+    
+    return stars;
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* Header with search bar */}
+      <header className="bg-white shadow-md sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <Link to="/" className="text-2xl font-extrabold text-blue-600">
+              Bite<span className="text-green-500">Rate</span>
+            </Link>
+            <form onSubmit={handleSearch} className="flex-grow">
+              <div className="relative flex w-full md:max-w-lg">
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchInputValue}
+                  onChange={(e) => setSearchInputValue(e.target.value)}
+                  className="w-full pl-4 pr-10 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none"
                 />
-                {product.glutenFree && (
-                  <div className="absolute top-3 right-3 bg-green-500 text-white rounded-full px-3 py-1 text-xs font-bold">
-                    Certified GF
-                  </div>
-                )}
+                <button 
+                  type="submit"
+                  className="absolute right-0 top-0 h-full px-3 text-blue-500 hover:text-blue-700"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
               </div>
-              <div className="p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">{product.name}</h3>
-                    <p className="text-sm text-gray-500 mb-3">{product.brand}</p>
-                  </div>
-                  {product.rating && (
-                    <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-lg">
-                      <span className="text-yellow-500 font-bold mr-1">{product.rating.toFixed(1)}</span>
-                      <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118l-2.8-2.034c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <Link
-                    to={`/product/${product.productID}`}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition w-full inline-block text-center"
-                  >
-                    View Details
-                  </Link>
-                </div>
-              </div>
-            </div>
+            </form>
+            <nav className="hidden md:flex space-x-4">
+              <Link to="/dashboard" className="text-gray-700 hover:text-blue-500">Dashboard</Link>
+              <Link to="/login" className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Login</Link>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-6 py-8">
+        {/* Search info */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-800">
+            {category 
+              ? `Category: ${category}` 
+              : query 
+                ? `Search results for "${query}"` 
+                : "All Products"
+            }
+          </h1>
+          <p className="text-gray-600 mt-2">
+            {loading 
+              ? "Loading products..." 
+              : `Found ${products.length} products`
+            }
+          </p>
+        </div>
+
+        {/* Category filters */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          <Link 
+            to="/search" 
+            className={`px-4 py-2 rounded-full text-sm font-medium ${!category ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
+          >
+            All
+          </Link>
+          {["Breads", "Pastas", "Snacks", "Desserts"].map((cat) => (
+            <Link
+              key={cat}
+              to={`/search?category=${encodeURIComponent(cat)}`}
+              className={`px-4 py-2 rounded-full text-sm font-medium ${
+                category === cat 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+              }`}
+            >
+              {cat}
+            </Link>
           ))}
         </div>
-      )}
+
+        {/* Results grid */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : error ? (
+          <div className="text-center p-8 bg-red-50 rounded-xl">
+            <p className="text-red-600">{error}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {products.map((product) => (
+              <Link
+                to={`/product/${product.productID}`}
+                key={product.productID}
+                className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden flex flex-col"
+              >
+                <img 
+                  src={product.image || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}
+                  alt={product.name}
+                  className="w-full h-48 object-cover"
+                />
+                <div className="p-4 flex-grow flex flex-col">
+                  <div className="text-sm text-blue-600 font-semibold mb-1">{product.brand}</div>
+                  <h2 className="text-lg font-semibold mb-2">{product.name}</h2>
+                  <div className="text-sm text-gray-500 mb-2">Category: {product.category}</div>
+                  <div className="flex items-center mb-2">
+                    <span className="text-yellow-500 mr-1">
+                      {product.rating ? product.rating.toFixed(1) : "N/A"}
+                    </span>
+                    <div className="flex">
+                      {renderStarRating(product.rating || 0)}
+                    </div>
+                  </div>
+                  <div className="text-blue-600 font-bold mt-auto">
+                    ${product.price ? product.price.toFixed(2) : "N/A"}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/* No results message */}
+        {!loading && !error && products.length === 0 && (
+          <div className="text-center py-12">
+            <h2 className="text-xl font-semibold text-gray-700 mb-2">No products found</h2>
+            <p className="text-gray-600 mb-6">
+              We couldn't find any products matching your criteria.
+            </p>
+            <Link 
+              to="/search" 
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg inline-block"
+            >
+              View all products
+            </Link>
+          </div>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white mt-16 py-8">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center">
+            <div className="text-xl font-bold mb-2">
+              Bite<span className="text-green-400">Rate</span>
+            </div>
+            <p className="text-gray-400 text-sm">© 2025 BiteRate. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

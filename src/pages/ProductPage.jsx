@@ -1,228 +1,330 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useLocation } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import productService from "../services/product.service";
-import reviewService from "../services/review.service";
-import authService from "../services/auth.service";
+import { authService } from "../services/api";
 
 export default function ProductPage() {
   const { id } = useParams();
-  const location = useLocation();
   const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [message, setMessage] = useState(location.state?.message || null);
-  const [currentUser, setCurrentUser] = useState(authService.getCurrentUser());
+  const navigate = useNavigate();
+  const currentUser = authService.getCurrentUser();
 
+  // Load product data
   useEffect(() => {
-    // Fetch product and reviews data
-    const fetchData = async () => {
+    const fetchProductData = async () => {
       try {
         setLoading(true);
         
-        // Fetch product details
+        // Get product details
         const productData = await productService.getProductById(id);
         setProduct(productData);
         
-        // Fetch reviews for this product
-        const reviewsData = await reviewService.getReviewsByProduct(id);
+        // Get product reviews
+        const reviewsData = await productService.getProductReviews(id);
         setReviews(reviewsData);
+        
+        // Get related products (same category)
+        if (productData && productData.category) {
+          const categoryProducts = await productService.getProductsByCategory(productData.category);
+          // Filter out the current product and limit to 4 related products
+          const filtered = categoryProducts
+            .filter(p => p.productID !== productData.productID)
+            .slice(0, 4);
+          setRelatedProducts(filtered);
+        }
         
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching data:", err);
-        setError(err.response?.data?.message || "Failed to load product information");
+        console.error("Error fetching product data:", err);
+        setError("Failed to load product information. Please try again later.");
         setLoading(false);
       }
     };
     
-    fetchData();
+    fetchProductData();
+  }, [id]);
+
+  // Render star rating based on rating value
+  const renderStarRating = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
     
-    // Clear message after 5 seconds
-    if (message) {
-      const timer = setTimeout(() => {
-        setMessage(null);
-      }, 5000);
-      
-      return () => clearTimeout(timer);
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<span key={`full-${i}`} className="text-yellow-400">★</span>);
     }
-  }, [id, message]);
-  
-  // Handle voting on a review
-  const handleVote = async (reviewId, voteType) => {
+    
+    if (hasHalfStar) {
+      stars.push(<span key="half" className="text-yellow-400">★</span>);
+    }
+    
+    for (let i = stars.length; i < 5; i++) {
+      stars.push(<span key={`empty-${i}`} className="text-gray-300">★</span>);
+    }
+    
+    return stars;
+  };
+
+  // Handle favorite toggle
+  const handleToggleFavorite = async () => {
     if (!currentUser) {
-      setMessage("Please log in to vote on reviews");
+      // Redirect to login if not logged in
+      navigate('/login', { state: { from: `/product/${id}` } });
       return;
     }
     
     try {
-      await reviewService.voteOnReview(reviewId, currentUser.id, voteType);
-      
-      // Refresh reviews to update vote counts
-      const updatedReviews = await reviewService.getReviewsByProduct(id);
-      setReviews(updatedReviews);
-      
-      setMessage(`Marked review as ${voteType}`);
+      await productService.toggleFavorite(id, currentUser.userID);
+      // You might want to update the UI to show the product is favorited
+      // This would require adding a "isFavorited" state and toggling it
     } catch (err) {
-      console.error("Error voting on review:", err);
-      setMessage(err.response?.data?.message || "Failed to record vote");
+      console.error("Error toggling favorite:", err);
+      // Show error message to user
     }
   };
-  
-  // Format date for display
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-  
-  // Render star rating
-  const renderStarRating = (rating) => {
-    return Array(5).fill(0).map((_, i) => (
-      <span key={i} className={i < rating ? "text-yellow-400" : "text-gray-300"}>★</span>
-    ));
-  };
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
-  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
-  if (!product) return <div className="p-8 text-center">Product not found</div>;
+  // Loading state
+  if (loading) {
+    return (
+      <div className="p-8 flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
+  // Error state
+  if (error) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto text-center">
+        <h1 className="text-3xl font-bold text-red-600 mb-4">Error</h1>
+        <p className="text-gray-700 mb-6">{error}</p>
+        <Link to="/search" className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 rounded-lg">
+          Browse Products
+        </Link>
+      </div>
+    );
+  }
+  
+  // Not found state
+  if (!product) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto text-center">
+        <h1 className="text-3xl font-bold text-red-600 mb-4">Product Not Found</h1>
+        <p className="text-gray-700 mb-6">Sorry, we couldn't find the product you're looking for.</p>
+        <Link to="/search" className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 rounded-lg">
+          Browse Products
+        </Link>
+      </div>
+    );
+  }
+  
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      {message && (
-        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md">
-          {message}
-        </div>
-      )}
-      
-      <h1 className="text-3xl font-bold text-blue-700 mb-4">{product.name}</h1>
-      <div className="flex flex-col md:flex-row gap-6">
-        <img 
-          src={`https://via.placeholder.com/250?text=${encodeURIComponent(product.name)}`}
-          alt={product.name} 
-          className="rounded shadow"
-        />
-        <div>
-          <h2 className="text-xl font-semibold">{product.name}</h2>
-          <p className="text-gray-600">{product.brand} • {product.category}</p>
-          <div className="flex items-center mt-2">
-            <span className="text-xl mr-2">
-              {renderStarRating(product.avgRating || 0)}
-            </span>
-            <span className="text-gray-600">
-              ({product.avgRating ? product.avgRating.toFixed(1) : "No ratings"})
-            </span>
-          </div>
-          <p className="mt-4 text-gray-700">
-            <strong>Ingredients:</strong> {product.ingredients || "Not specified"}
-          </p>
-          
-          <div className="mt-6">
-            <Link 
-              to={`/review/${product.productID}`}
-              state={{ product }}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-            >
-              Write a Review
+    <div className="bg-gray-100 min-h-screen">
+      {/* Header */}
+      <header className="bg-white shadow-md py-4">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="flex justify-between items-center">
+            <Link to="/" className="text-2xl font-bold text-blue-600">
+              Bite<span className="text-green-500">Rate</span>
             </Link>
+            <nav className="hidden md:flex space-x-6">
+              <Link to="/" className="text-gray-700 hover:text-blue-500">Home</Link>
+              <Link to="/search" className="text-gray-700 hover:text-blue-500">Products</Link>
+              <Link to="/dashboard" className="text-gray-700 hover:text-blue-500">Dashboard</Link>
+              {currentUser ? (
+                <Link to="/profile" className="text-gray-700 hover:text-blue-500">Profile</Link>
+              ) : (
+                <Link to="/login" className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Login</Link>
+              )}
+            </nav>
+          </div>
+        </div>
+      </header>
+      
+      {/* Breadcrumbs */}
+      <div className="bg-white border-b">
+        <div className="max-w-6xl mx-auto px-6 py-2">
+          <div className="flex items-center text-sm text-gray-600">
+            <Link to="/" className="hover:text-blue-500">Home</Link>
+            <span className="mx-2">›</span>
+            <Link to="/search" className="hover:text-blue-500">Products</Link>
+            {product.category && (
+              <>
+                <span className="mx-2">›</span>
+                <Link to={`/search?category=${encodeURIComponent(product.category)}`} className="hover:text-blue-500">
+                  {product.category}
+                </Link>
+              </>
+            )}
+            <span className="mx-2">›</span>
+            <span className="text-gray-900 font-medium">{product.name}</span>
           </div>
         </div>
       </div>
-
-      <section className="mt-10">
-        <h3 className="text-xl font-bold mb-4">Reviews</h3>
+      
+      <main className="max-w-6xl mx-auto px-6 py-8">
+        {/* Product Details */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+          <div className="md:flex">
+            <div className="md:w-1/2">
+              <img 
+                src={product.image || `https://via.placeholder.com/500?text=${encodeURIComponent(product.name)}`} 
+                alt={product.name} 
+                className="w-full h-auto object-cover"
+              />
+            </div>
+            <div className="p-6 md:w-1/2">
+              <p className="text-blue-600 font-medium mb-1">{product.brand}</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
+              <div className="flex items-center mb-4">
+                <div className="flex text-yellow-400 mr-2">
+                  {renderStarRating(product.rating || 0)}
+                </div>
+                <span className="text-gray-600">({reviews.length} reviews)</span>
+              </div>
+              <p className="text-2xl font-bold text-blue-600 mb-6">
+                ${product.price ? product.price.toFixed(2) : "N/A"}
+              </p>
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold mb-2">Category</h2>
+                {product.category && (
+                  <Link 
+                    to={`/search?category=${encodeURIComponent(product.category)}`}
+                    className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm text-gray-700 hover:bg-gray-300"
+                  >
+                    {product.category}
+                  </Link>
+                )}
+              </div>
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold mb-2">Description</h2>
+                <p className="text-gray-700">
+                  {product.description || `A premium gluten-free ${product.name.toLowerCase()} made with high-quality ingredients. Perfect for those with celiac disease or gluten sensitivity.`}
+                </p>
+              </div>
+              {product.ingredients && (
+                <div>
+                  <h2 className="text-lg font-semibold mb-2">Ingredients</h2>
+                  <p className="text-gray-700">{product.ingredients}</p>
+                </div>
+              )}
+              <div className="mt-8 flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={handleToggleFavorite}
+                  className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg flex-1 font-medium"
+                >
+                  Add to Favorites
+                </button>
+                <Link 
+                  to={`/review?productId=${product.productID}`}
+                  className="bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg flex-1 font-medium text-center"
+                >
+                  Write a Review
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
         
-        {reviews.length === 0 ? (
-          <div className="bg-gray-50 p-6 rounded-lg text-center">
-            <p className="text-gray-600">No reviews yet. Be the first to review this product!</p>
+        {/* Reviews */}
+        <section className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Reviews</h2>
             <Link 
-              to={`/review/${product.productID}`}
-              state={{ product }}
-              className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+              to={`/review?productId=${product.productID}`}
+              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
             >
               Write a Review
             </Link>
           </div>
-        ) : (
-          <div className="space-y-6">
-            {reviews.map(review => (
-              <div key={review.reviewID} className="bg-white p-6 rounded-lg shadow">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center space-x-1 mb-2">
-                      {renderStarRating(review.productRating)}
+          
+          {reviews.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600 mb-4">No reviews yet. Be the first to review this product!</p>
+              <Link 
+                to={`/review?productId=${product.productID}`}
+                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg font-medium"
+              >
+                Write a Review
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {reviews.map(review => (
+                <div key={review.reviewID} className="border-b border-gray-200 pb-6 last:border-b-0">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-medium text-gray-900">{review.username || "User"}</div>
+                      <div className="flex text-yellow-400 text-sm">
+                        {renderStarRating(review.productRating || 0)}
+                      </div>
                     </div>
-                    <p className="text-gray-700 mb-4">{review.description}</p>
                     <div className="text-sm text-gray-500">
-                      <span>By {review.User?.email || "Anonymous"}</span>
-                      <span className="mx-2">•</span>
-                      <span>{formatDate(review.datePosted)}</span>
-                      {review.storePurchasedAt && (
-                        <>
-                          <span className="mx-2">•</span>
-                          <span>Purchased at {review.storePurchasedAt}</span>
-                        </>
-                      )}
+                      {new Date(review.datePosted).toLocaleDateString()}
                     </div>
                   </div>
-                  
-                  {/* Show edit/delete options if this is the user's review */}
-                  {currentUser && currentUser.id === review.userID && (
-                    <div className="flex space-x-2">
-                      <Link 
-                        to={`/review/edit/${review.reviewID}`}
-                        state={{ review, product }}
-                        className="text-sm text-blue-500 hover:text-blue-700"
-                      >
-                        Edit
-                      </Link>
-                      <button 
-                        onClick={() => {
-                          if (window.confirm("Are you sure you want to delete this review?")) {
-                            reviewService.deleteReview(review.reviewID, currentUser.id)
-                              .then(() => {
-                                setReviews(reviews.filter(r => r.reviewID !== review.reviewID));
-                                setMessage("Review deleted successfully");
-                              })
-                              .catch(err => {
-                                console.error("Error deleting review:", err);
-                                setMessage("Failed to delete review");
-                              });
-                          }
-                        }}
-                        className="text-sm text-red-500 hover:text-red-700"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                  <p className="text-gray-700 mt-2">{review.description}</p>
+                  {review.storePurchasedAt && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      Purchased at: {review.storePurchasedAt}
+                    </p>
                   )}
                 </div>
-                
-                {/* Review voting section */}
-                <div className="mt-4 flex items-center space-x-4">
-                  <button 
-                    onClick={() => handleVote(review.reviewID, 'helpful')}
-                    className="flex items-center text-sm text-gray-600 hover:text-green-600"
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905v.714L7.5 9h-3a2 2 0 00-2 2v.5" />
-                    </svg>
-                    Helpful ({review.helpfulCount || 0})
-                  </button>
-                  <button 
-                    onClick={() => handleVote(review.reviewID, 'unhelpful')}
-                    className="flex items-center text-sm text-gray-600 hover:text-red-600"
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018c.163 0 .326.02.485.06L17 4m-7 10v2a2 2 0 002 2h.095c.5 0 .905-.405.905-.905v-.714l-.501-.501-3.5-3.5-4 4z" />
-                    </svg>
-                    Not helpful ({review.unhelpfulCount || 0})
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+        </section>
+        
+        {/* Similar Products */}
+        {relatedProducts.length > 0 && (
+          <section className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Similar Products</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {relatedProducts.map(p => (
+                <Link 
+                  to={`/product/${p.productID}`} 
+                  key={p.productID}
+                  className="bg-gray-50 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  <img 
+                    src={p.image || `https://via.placeholder.com/300?text=${encodeURIComponent(p.name)}`} 
+                    alt={p.name} 
+                    className="w-full h-36 object-cover"
+                  />
+                  <div className="p-4">
+                    <div className="text-sm text-blue-600 font-medium">{p.brand}</div>
+                    <h3 className="font-medium text-gray-900 mb-1">{p.name}</h3>
+                    <div className="flex justify-between items-center">
+                      <div className="flex text-yellow-400 text-xs">
+                        {renderStarRating(p.rating || 0)}
+                      </div>
+                      <div className="text-blue-600 font-bold">
+                        ${p.price ? p.price.toFixed(2) : "N/A"}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
         )}
-      </section>
+      </main>
+      
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white py-8 mt-16">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center">
+            <div className="text-xl font-bold mb-2">
+              Bite<span className="text-green-400">Rate</span>
+            </div>
+            <p className="text-gray-400 text-sm">© 2024 BiteRate. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
