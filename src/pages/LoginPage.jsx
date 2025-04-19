@@ -1,6 +1,6 @@
 import { signInWithPopup } from "firebase/auth";
 import { auth, provider } from "../firebase";
-import { authService } from "../services/api";
+import authService from "../services/auth.service";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
