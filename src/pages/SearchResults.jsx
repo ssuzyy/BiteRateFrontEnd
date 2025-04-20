@@ -7,30 +7,25 @@ export default function SearchResults() {
   const query = searchParams.get("query") || "";
   const category = searchParams.get("category") || "";
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchInputValue, setSearchInputValue] = useState(query);
   const navigate = useNavigate();
 
-  // Fetch products based on search parameters
+  // Fetch all products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
         let data;
         
-        if (query) {
-          // Search by query
-          data = await productService.searchProducts(query);
-        } else if (category) {
-          // Filter by category
-          data = await productService.getProductsByCategory(category);
-        } else {
-          // Get all products
-          data = await productService.getAllProducts();
-        }
+        // Get all products
+        data = await productService.getAllProducts();
         
         setProducts(data);
+        setFilteredProducts(data);
         setLoading(false);
       } catch (err) {
         console.error("Error fetching products:", err);
@@ -40,7 +35,21 @@ export default function SearchResults() {
     };
     
     fetchProducts();
-  }, [query, category]);
+  }, []);
+
+  // Filter products when the selected category changes
+  useEffect(() => {
+    console.log("selectedCat changed or products changed");
+    console.log(selectedCategory);
+    console.log(products);
+    if (selectedCategory && selectedCategory != 'All') {
+      setFilteredProducts(
+        products.filter(product => product.category === selectedCategory)
+      );
+    } else {
+      setFilteredProducts(products);
+    }
+  }, [selectedCategory, products]);
 
   // Handle search form submission
   const handleSearch = (e) => {
@@ -128,16 +137,10 @@ export default function SearchResults() {
 
         {/* Category filters */}
         <div className="flex flex-wrap gap-2 mb-6">
-          <Link 
-            to="/search" 
-            className={`px-4 py-2 rounded-full text-sm font-medium ${!category ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
-          >
-            All
-          </Link>
-          {["Breads", "Pastas", "Snacks", "Desserts"].map((cat) => (
-            <Link
+          {["All", "Breads", "Pastas", "Snacks", "Desserts"].map((cat) => (
+            <button
               key={cat}
-              to={`/search?category=${encodeURIComponent(cat)}`}
+              onClick={() => setSelectedCategory(cat)}
               className={`px-4 py-2 rounded-full text-sm font-medium ${
                 category === cat 
                   ? 'bg-blue-500 text-white' 
@@ -145,7 +148,7 @@ export default function SearchResults() {
               }`}
             >
               {cat}
-            </Link>
+            </button>
           ))}
         </div>
 
@@ -160,7 +163,7 @@ export default function SearchResults() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <Link
                 to={`/product/${product.productID}`}
                 key={product.productID}
