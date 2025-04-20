@@ -199,14 +199,16 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {products.slice(0, 3).map((product) => (
+              {products.slice(0, 3).map((product) => {
+                console.log("Rendering product:", product);
+                return (
                 <div
                   key={product.productID}
                   className="bg-white rounded-xl shadow-md hover:shadow-2xl hover:-translate-y-1 transition-transform duration-300 overflow-hidden group"
                 >
                   <div className="relative">
                     <img
-                      src={product.image || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}
+                      src={product.imageUrl || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}
                       alt={product.name}
                       className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -224,10 +226,10 @@ export default function HomePage() {
                       </div>
                       <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-lg">
                         <span className="text-yellow-500 font-bold mr-1">
-                          {product.rating ? product.rating.toFixed(1) : "N/A"}
+                          {product.avgRating ? product.avgRating.toFixed(1) : "N/A"}
                         </span>
                         <div className="flex">
-                          {renderStarRating(product.rating || 0)}
+                          {renderStarRating(Number(product.avgRating) || 0)}
                         </div>
                       </div>
                     </div>
@@ -244,7 +246,7 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </section>

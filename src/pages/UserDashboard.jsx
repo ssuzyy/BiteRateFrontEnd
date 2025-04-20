@@ -1,22 +1,37 @@
 import { useState, useEffect } from "react";
 import { authService } from "../services/api";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import productService from "../services/product.service";
 
 export default function UserDashboard() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [memberSince] = useState("April 2023");
+  const [products, setProducts] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-    } else {
-      // Redirect to login if no user is found
-      navigate("/login");
-    }
-    setLoading(false);
+    const fetchData = async () => {
+      try {
+        const currentUser = authService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          
+          // Fetch products from the API
+          const data = await productService.getAllProducts();
+          setProducts(data);
+        } else {
+          // Redirect to login if no user is found
+          navigate("/login");
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
   }, [navigate]);
 
   if (loading) {
@@ -26,13 +41,6 @@ export default function UserDashboard() {
   if (!user) {
     return null; // This should not render as we navigate away
   }
-  
-  // Sample data for dashboard
-  const topRatedProducts = [
-    { id: 1, name: "Udi's Whole Grain Bread", brand: "Udi's", rating: 4.5, certifiedGF: true, image: "https://via.placeholder.com/400x300?text=Udi's+Bread" },
-    { id: 2, name: "Siete Tortilla Chips", brand: "Siete Foods", rating: 4, certifiedGF: true, image: "https://via.placeholder.com/400x300?text=Siete+Chips" },
-    { id: 3, name: "Bob's Red Mill Flour", brand: "Bob's Red Mill", rating: 5, certifiedGF: true, image: "https://via.placeholder.com/400x300?text=Bobs+Flour" }
-  ];
   
   const recentReviews = [
     { id: 1, productName: "Canyon Bakehouse Bread", rating: 5, date: "2 days ago", comment: "Excellent texture and taste!" },
@@ -161,10 +169,10 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        {/* Top Rated Products */}
+        {/* Fav Products */}
         <section className="mt-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Your Top-Rated Products</h2>
+            <h2 className="text-2xl font-bold text-gray-800">Your Favorite Products</h2>
             <button className="text-blue-500 hover:text-blue-700 font-medium flex items-center">
               View all
               <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -173,54 +181,55 @@ export default function UserDashboard() {
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {topRatedProducts.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white rounded-xl shadow-md hover:shadow-2xl hover:-translate-y-1 transition-transform duration-300 overflow-hidden group"
-              >
-                <div className="relative">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  {product.certifiedGF && (
-                    <div className="absolute top-3 right-3 bg-green-500 text-white rounded-full px-3 py-1 text-xs font-bold">
-                      Certified GF
-                    </div>
-                  )}
-                </div>
-                <div className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-2">{product.name}</h3>
-                      <p className="text-sm text-gray-500 mb-3">{product.brand}</p>
-                    </div>
-                    <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-lg">
-                      <span className="text-yellow-500 font-bold mr-1">
-                        {product.rating.toFixed(1)}
-                      </span>
-                      <div className="flex">
-                        {renderStarRating(product.rating)}
+              {products.slice(0, 3).map((product) => {
+                console.log("Rendering product:", product);
+                return (
+                <div
+                  key={product.productID}
+                  className="bg-white rounded-xl shadow-md hover:shadow-2xl hover:-translate-y-1 transition-transform duration-300 overflow-hidden group"
+                >
+                  <div className="relative">
+                    <img
+                      src={product.imageUrl || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}
+                      alt={product.name}
+                      className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {product.certifiedGF && (
+                      <div className="absolute top-3 right-3 bg-green-500 text-white rounded-full px-3 py-1 text-xs font-bold">
+                        Certified GF
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-2">{product.name}</h3>
+                        <p className="text-sm text-gray-500 mb-3">{product.brand}</p>
+                      </div>
+                      <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-lg">
+                        <span className="text-yellow-500 font-bold mr-1">
+                          {product.avgRating ? product.avgRating.toFixed(1) : "N/A"}
+                        </span>
+                        <div className="flex">
+                          {renderStarRating(Number(product.avgRating) || 0)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center mt-5">
-                    <button 
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      View Product
-                    </button>
-                    <button 
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                    >
-                      Write Review
-                    </button>
+                    <div className="flex justify-between items-center mt-5">
+                      <span className="text-blue-600 font-bold text-lg">
+                        ${product.price ? product.price.toFixed(2) : "N/A"}
+                      </span>
+                      <Link 
+                        to={`/product/${product.productID}`}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                      >
+                        View Details
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              )})}
+            </div>
         </section>
 
         {/* Discover Section */}

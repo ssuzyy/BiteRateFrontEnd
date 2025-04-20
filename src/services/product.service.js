@@ -41,6 +41,17 @@ const productService = {
     }
   },
 
+  // get reviews by user ID
+  getUserReviews: async (userId) => {
+    try {
+      const response = await api.get(`/users/${userId}/reviews`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching user reviews:", error);
+      throw error;
+    }
+  },
+
   async searchProducts(query) {
     try {
       const response = await api.get(`/products/search`, {

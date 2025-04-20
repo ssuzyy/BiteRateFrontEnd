@@ -167,7 +167,7 @@ export default function SearchResults() {
                 className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden flex flex-col"
               >
                 <img 
-                  src={product.image || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}
+                  src={product.imageUrl || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`}
                   alt={product.name}
                   className="w-full h-48 object-cover"
                 />
@@ -177,10 +177,10 @@ export default function SearchResults() {
                   <div className="text-sm text-gray-500 mb-2">Category: {product.category}</div>
                   <div className="flex items-center mb-2">
                     <span className="text-yellow-500 mr-1">
-                      {product.rating ? product.rating.toFixed(1) : "N/A"}
+                      {product.avgRating ? product.avgRating.toFixed(1) : "N/A"}
                     </span>
                     <div className="flex">
-                      {renderStarRating(product.rating || 0)}
+                      {renderStarRating(Number(product.avgRating) || 0)}
                     </div>
                   </div>
                   <div className="text-blue-600 font-bold mt-auto">
