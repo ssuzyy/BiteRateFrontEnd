@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import productService from "../services/product.service";
-import authService from "../services/auth.service";
+import { authService } from "../services/api";
 
 export default function ProductPage() {
   const { id } = useParams();
