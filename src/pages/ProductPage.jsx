@@ -8,6 +8,8 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [numReviews, setNumReviews] = useState();
+  const [avgRating, setAvgRating] = useState();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -25,17 +27,20 @@ export default function ProductPage() {
         
         // Get product reviews
         const reviewsData = await productService.getProductReviews(id);
-        setReviews(reviewsData);
+        setReviews(reviewsData.reviews);
+        console.log(reviewsData);
+        setNumReviews(reviewsData.totalReviews);
+        setAvgRating(reviewsData.averageRating);
         
         // Get related products (same category)
-        if (productData && productData.category) {
-          const categoryProducts = await productService.getProductsByCategory(productData.category);
-          // Filter out the current product and limit to 4 related products
-          const filtered = categoryProducts
-            .filter(p => p.productID !== productData.productID)
-            .slice(0, 4);
-          setRelatedProducts(filtered);
-        }
+        // if (productData && productData.category) {
+        //   const categoryProducts = await productService.getProductsByCategory(productData.category);
+        //   // Filter out the current product and limit to 4 related products
+        //   const filtered = categoryProducts
+        //     .filter(p => p.productID !== productData.productID)
+        //     .slice(0, 4);
+        //   setRelatedProducts(filtered);
+        // }
         
         setLoading(false);
       } catch (err) {
@@ -172,7 +177,7 @@ export default function ProductPage() {
           <div className="md:flex">
             <div className="md:w-1/2">
               <img 
-                src={product.image || `https://via.placeholder.com/500?text=${encodeURIComponent(product.name)}`} 
+                src={product.imageUrl || `https://via.placeholder.com/500?text=${encodeURIComponent(product.name)}`} 
                 alt={product.name} 
                 className="w-full h-auto object-cover"
               />
@@ -182,9 +187,9 @@ export default function ProductPage() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
               <div className="flex items-center mb-4">
                 <div className="flex text-yellow-400 mr-2">
-                  {renderStarRating(product.rating || 0)}
+                  {renderStarRating(avgRating || 0)}
                 </div>
-                <span className="text-gray-600">({reviews.length} reviews)</span>
+                <span className="text-gray-600">({numReviews} reviews)</span>
               </div>
               <p className="text-2xl font-bold text-blue-600 mb-6">
                 ${product.price ? product.price.toFixed(2) : "N/A"}
@@ -242,7 +247,7 @@ export default function ProductPage() {
             </Link>
           </div>
           
-          {reviews.length === 0 ? (
+          {numReviews === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-600 mb-4">No reviews yet. Be the first to review this product!</p>
               <Link 

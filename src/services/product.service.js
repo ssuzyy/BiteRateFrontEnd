@@ -33,7 +33,7 @@ const productService = {
 
   async getProductReviews(productId) {
     try {
-      const response = await api.get(`/products/${productId}/reviews`);
+      const response = await api.get(`/reviews/product/${productId}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching reviews for product ID ${productId}:`, error);
