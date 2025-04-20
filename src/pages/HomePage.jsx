@@ -7,7 +7,6 @@ import productService from "../services/product.service";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [backendStatus, setBackendStatus] = useState("checking");
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -150,13 +149,6 @@ export default function HomePage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-10 py-12">
-        {/* Backend Status Indicator (for development purposes) */}
-        {backendStatus !== "online" && (
-          <div className={`mb-4 p-2 rounded text-white text-sm ${backendStatus === "checking" ? "bg-yellow-500" : "bg-red-500"}`}>
-            Backend status: {backendStatus}
-          </div>
-        )}
-
         {/* Hero */}
         <section
           className="relative z-0 mb-16 bg-gradient-to-br from-blue-100 via-green-100 to-blue-50 rounded-3xl shadow-lg p-12 sm:p-16 text-center"
