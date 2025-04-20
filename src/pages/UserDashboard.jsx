@@ -1,8 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from "react";
+import { authService } from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 export default function UserDashboard() {
-  const [userName] = useState("Alex Johnson");
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [memberSince] = useState("April 2023");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+    } else {
+      // Redirect to login if no user is found
+      navigate("/login");
+    }
+    setLoading(false);
+  }, [navigate]);
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading...</div>;
+  }
+
+  if (!user) {
+    return null; // This should not render as we navigate away
+  }
   
   // Sample data for dashboard
   const topRatedProducts = [
@@ -61,10 +84,10 @@ export default function UserDashboard() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center mb-6 md:mb-0">
               <div className="bg-blue-600 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mr-6">
-                {userName.charAt(0)}
+                {user.email.split('@')[0][0].toUpperCase()}
               </div>
               <div>
-                <h1 className="text-3xl font-extrabold text-blue-700">{userName}</h1>
+                <h1 className="text-3xl font-extrabold text-blue-700">{user.email.split('@')[0]}</h1>
                 <p className="text-gray-600">Member since {memberSince}</p>
               </div>
             </div>
