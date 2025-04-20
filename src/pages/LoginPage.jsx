@@ -1,6 +1,7 @@
+// src/pages/LoginPage.jsx
 import { signInWithPopup } from "firebase/auth";
 import { auth, provider } from "../firebase";
-import authService from "../services/auth.service";
+import { authService } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
@@ -18,7 +19,7 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      // Step 2: Get the Google ID token
+      // Step 2: Get the Firebase ID token
       const token = await user.getIdToken();
       
       // Step 3: Send token to your backend for verification and user creation/retrieval

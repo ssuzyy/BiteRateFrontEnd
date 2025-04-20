@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import reviewService from "../services/review.service";
-import authService from "../services/auth.service";
+import { authService } from "../services/api";
 
 export default function SubmitReview() {
   const navigate = useNavigate();
