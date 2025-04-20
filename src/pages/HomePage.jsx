@@ -2,31 +2,27 @@ import { useState, useEffect } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../services/api";
+import { authService } from "../services/api";
 import productService from "../services/product.service";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [backendStatus, setBackendStatus] = useState("checking");
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     AOS.init({ duration: 800 });
 
-    // test api get
-    api.get("/health")
-      .then((res) => {
-        console.log("Backend connected:", res.data);
-        setBackendStatus("online");
-      })
-      .catch((err) => {
-        console.error("Backend failed:", err);
-        setBackendStatus("offline");
-      });
+    const currentUser = authService.getCurrentUser();
+      if (currentUser) {
+        setIsLoggedIn(true);
+        setUser(currentUser);
+      }
     
     // Fetch products when component mounts
     const fetchProducts = async () => {
@@ -44,6 +40,13 @@ export default function HomePage() {
     
     fetchProducts();
   }, []);
+
+  const handleLogout = () => {
+    authService.logout();
+    setIsLoggedIn(false);
+    setUser(null);
+    navigate("/");
+  };
 
   // Render star rating based on rating value
   const renderStarRating = (rating) => {
@@ -89,18 +92,27 @@ export default function HomePage() {
               <Link to="/">Bite<span className="text-green-500">Rate</span></Link>
             </div>
             <nav className="hidden md:flex space-x-10">
-              <Link to="/" className="text-gray-700 hover:text-blue-500 font-medium transition">
+              <a href="/" className="text-gray-700 hover:text-blue-500 font-medium transition">
                 Home
-              </Link>
-              <Link to="/dashboard" className="text-gray-700 hover:text-blue-500 font-medium transition">
+              </a>
+              <a href="/dashboard" className="text-gray-700 hover:text-blue-500 font-medium transition">
                 Dashboard
-              </Link>
-              <Link
-                to="/login"
-                className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg font-medium transition"
-              >
-                Login
-              </Link>
+              </a>
+              {isLoggedIn ? (
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg font-medium transition"
+                >
+                  Logout
+                </button>
+              ) : (
+                <a
+                  href="/login"
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg font-medium transition"
+                >
+                  Login
+                </a>
+              )}
             </nav>
             <button
               onClick={() => setMenuOpen(!menuOpen)}
@@ -114,27 +126,29 @@ export default function HomePage() {
         </div>
         {menuOpen && (
           <nav className="md:hidden bg-white px-6 py-4 shadow-md">
-            <Link to="/" className="block py-2 text-gray-700 hover:text-blue-500">
+            <a href="/" className="block py-2 text-gray-700 hover:text-blue-500">
               Home
-            </Link>
-            <Link to="/dashboard" className="block py-2 text-gray-700 hover:text-blue-500">
+            </a>
+            <a href="/dashboard" className="block py-2 text-gray-700 hover:text-blue-500">
               Dashboard
-            </Link>
-            <Link to="/login" className="block py-2 bg-blue-500 text-white text-center rounded-md">
-              Login
-            </Link>
+            </a>
+            {isLoggedIn ? (
+              <button
+                onClick={handleLogout}
+                className="block w-full py-2 bg-red-500 text-white text-center rounded-md hover:bg-red-600"
+              >
+                Logout
+              </button>
+            ) : (
+              <a href="/login" className="block py-2 bg-blue-500 text-white text-center rounded-md">
+                Login
+              </a>
+            )}
           </nav>
         )}
       </header>
 
       <main className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-10 py-12">
-        {/* Backend Status Indicator (for development purposes) */}
-        {backendStatus !== "online" && (
-          <div className={`mb-4 p-2 rounded text-white text-sm ${backendStatus === "checking" ? "bg-yellow-500" : "bg-red-500"}`}>
-            Backend status: {backendStatus}
-          </div>
-        )}
-
         {/* Hero */}
         <section
           className="relative z-0 mb-16 bg-gradient-to-br from-blue-100 via-green-100 to-blue-50 rounded-3xl shadow-lg p-12 sm:p-16 text-center"
