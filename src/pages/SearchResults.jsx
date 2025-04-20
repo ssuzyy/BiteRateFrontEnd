@@ -39,24 +39,22 @@ export default function SearchResults() {
 
   // Filter products when the selected category changes
   useEffect(() => {
-    console.log("selectedCat changed or products changed");
-    console.log(selectedCategory);
-    console.log(products);
+    let filtered = products;
     if (selectedCategory && selectedCategory != 'All') {
-      setFilteredProducts(
-        products.filter(product => product.category === selectedCategory)
+      filtered = products.filter(product => product.category === selectedCategory)
+    } 
+    if (searchInputValue) {
+      const searchTerm = searchInputValue.toLowerCase();
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchTerm)
       );
-    } else {
-      setFilteredProducts(products);
     }
-  }, [selectedCategory, products]);
+    setFilteredProducts(filtered)
+  }, [selectedCategory, searchInputValue, products]);
 
-  // Handle search form submission
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchInputValue.trim()) {
-      navigate(`/search?query=${encodeURIComponent(searchInputValue.trim())}`);
-    }
+    // The filtering is handled in the useEffect hook
   };
 
   // Render star rating based on rating value
@@ -120,17 +118,12 @@ export default function SearchResults() {
         {/* Search info */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-800">
-            {category 
-              ? `Category: ${category}` 
-              : query 
-                ? `Search results for "${query}"` 
-                : "All Products"
-            }
+            {searchInputValue ? `Search results for "${searchInputValue}"` : "All Products"}
           </h1>
           <p className="text-gray-600 mt-2">
             {loading 
               ? "Loading products..." 
-              : `Found ${products.length} products`
+              : `Found ${filteredProducts.length} products`
             }
           </p>
         </div>
