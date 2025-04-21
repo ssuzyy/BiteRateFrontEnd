@@ -5,6 +5,7 @@ import UserDashboard from "./pages/UserDashboard";
 import ProductPage from "./pages/ProductPage";
 import SubmitReview from "./pages/SubmitReview";
 import SearchResults from "./pages/SearchResults";
+import SubmitProduct from "./pages/SubmitProduct";
 
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
         <Route path="/product/:id" element={<ProductPage />} />
         <Route path="/review" element={<SubmitReview />} />
         <Route path="/search" element={<SearchResults />} />
+        <Route path="/SubmitProduct" element={<SubmitProduct />} />
         <Route path="*" element={<div className="flex h-screen justify-center items-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-red-600 mb-4">Page Not Found</h1>

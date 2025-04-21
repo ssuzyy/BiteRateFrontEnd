@@ -205,6 +205,19 @@ export default function SearchResults() {
         )}
       </main>
 
+      {/* Add a new Product Link */}
+      <div className="text-center mt-10">
+        <p className="text-gray-600">
+          Not finding what you are looking for?{' '}
+          <Link
+            to="/SubmitProduct"
+            className="text-blue-600 hover:underline font-semibold"
+          >
+            Add a new Product
+          </Link>
+        </p>
+      </div>
+
       {/* Footer */}
       <footer className="bg-gray-800 text-white mt-16 py-8">
         <div className="max-w-6xl mx-auto px-6">
